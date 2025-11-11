@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>多美味摇摇机</title>
+  <!-- 引入Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 引入Font Awesome -->
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  
+  <!-- 配置Tailwind自定义主题 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#FF7D00', // 主色调：橙色（食欲、活力）
+            secondary: '#FFB800', // 辅助色：亮黄色（快乐、美味）
+            dark: '#1E1E2E', // 深色背景
+            light: '#FAFAFA', // 浅色文本
+            accent: '#FF4500', // 强调色：橙红色（热情）
+          },
+          fontFamily: {
+            inter: ['Inter', 'system-ui', 'sans-serif'],
+          },
+          animation: {
+            'spin-slow': 'spin 8s linear infinite',
+            'roll': 'roll 0.1s linear infinite',
+            'bounce-slow': 'bounce 2s infinite',
+          },
+          keyframes: {
+            roll: {
+              '0%': { transform: 'translateY(0)' },
+              '100%': { transform: 'translateY(-100%)' },
+            }
+          }
+        },
+      }
+    }
+  </script>
+  
+  <!-- 自定义工具类 -->
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .text-shadow {
+        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      }
+      .glass-effect {
+        backdrop-filter: blur(8px);
+        background-color: rgba(255,255,255,0.1);
+      }
+      .slot-border {
+        border-image: linear-gradient(to right, #FF7D00, #FFB800, #FF7D00) 1;
+      }
+      .lever-active {
+        transform: rotate(30deg) translateY(10px);
+      }
+    }
+  </style>
+  
+  <style>
+    /* 基础样式 */
+    body {
+      background-image: radial-gradient(circle at center, #2D2D44 0%, #1E1E2E 100%);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    
+    /* 摇摇机滚筒样式 */
+    .slot-reel {
+      position: relative;
+      overflow: hidden;
+      height: 120px;
+    }
+    
+    .slot-reel-inner {
+      position: absolute;
+      width: 100%;
+      transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+    
+    .slot-item {
+      height: 120px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      text-align: center;
+      padding: 0 5px;
+    }
+    
+    .dish-price {
+      font-size: 0.8rem;
+      opacity: 0.8;
+      margin-top: 4px;
+      color: #FFB800;
+    }
+    
+    /* 拉杆动画 */
+    .lever {
+      transition: all 0.3s ease;
+      transform-origin: top center;
+    }
+    
+    /* 中奖效果 */
+    .win-effect {
+      animation: win 0.5s ease infinite alternate;
+    }
+    
+    @keyframes win {
+      from { transform: scale(1); box-shadow: 0 0 20px rgba(255,125,0,0.5); }
+      to { transform: scale(1.05); box-shadow: 0 0 30px rgba(255,125,0,0.8); }
+    }
+    
+    /* 粒子背景效果 */
+    .particle {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.1);
+      animation: float 8s infinite ease-in-out;
+    }
+    
+    @keyframes float {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(-30px) rotate(180deg); }
+    }
+  </style>
+</head>
+
+<body class="font-inter text-light overflow-x-hidden relative">
+  <!-- 粒子背景 -->
+  <div id="particles" class="fixed inset-0 z-0 pointer-events-none"></div>
+  
+  <!-- 页面容器 -->
+  <div class="container mx-auto px-4 py-8 relative z-10">
+    <!-- 标题区域 -->
+    <header class="text-center mb-8">
+      <h1 class="text-[clamp(2rem,5vw,3.5rem)] font-bold text-primary mb-2 text-shadow">
+        <i class="fa fa-cutlery mr-2"></i>多美味摇摇机
+      </h1>
+      <p class="text-gray-300 text-[clamp(1rem,2vw,1.2rem)] max-w-2xl mx-auto">
+        选择困难症？摇一摇，美味自动来！轻松搞定今日菜单～
+      </p>
+    </header>
+    
+    <!-- 主内容区 -->
+    <main class="max-w-4xl mx-auto">
+      <!-- 摇摇机主体 -->
+      <div class="bg-dark/80 rounded-2xl p-6 md:p-8 glass-effect border border-primary/30 shadow-xl mb-8">
+        <!-- 摇摇机滚筒区域 -->
+        <div class="flex justify-center gap-4 md:gap-6 mb-8">
+          <!-- 滚筒1 -->
+          <div class="slot-reel bg-dark/90 rounded-xl border-2 slot-border w-[clamp(100px,25vw,150px)] shadow-inner" id="reel1">
+            <div class="slot-reel-inner" id="reel1-inner">
+              <!-- 菜品会通过JS动态添加 -->
+            </div>
+          </div>
+          
+          <!-- 滚筒2 -->
+          <div class="slot-reel bg-dark/90 rounded-xl border-2 slot-border w-[clamp(100px,25vw,150px)] shadow-inner" id="reel2">
+            <div class="slot-reel-inner" id="reel2-inner">
+              <!-- 菜品会通过JS动态添加 -->
+            </div>
+          </div>
+          
+          <!-- 滚筒3 -->
+          <div class="slot-reel bg-dark/90 rounded-xl border-2 slot-border w-[clamp(100px,25vw,150px)] shadow-inner" id="reel3">
+            <div class="slot-reel-inner" id="reel3-inner">
+              <!-- 菜品会通过JS动态添加 -->
+            </div>
+          </div>
+        </div>
+        
+        <!-- 中奖结果显示 -->
+        <div id="result" class="text-center mb-8 hidden">
+          <div class="inline-block bg-primary/20 rounded-xl p-4 md:p-6 border border-primary/50">
+            <h2 class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-secondary mb-2">今日美味推荐</h2>
+            <p id="winning-dish" class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-white text-shadow"></p>
+            <p id="winning-price" class="text-[clamp(1rem,2vw,1.2rem)] text-secondary mt-2"></p>
+          </div>
+        </div>
+        
+        <!-- 控制区域 -->
+        <div class="flex flex-col md:flex-row items-center justify-center gap-6">
+          <!-- 拉杆 -->
+          <div class="relative">
+            <div class="w-16 h-32 bg-gradient-to-b from-gray-700 to-gray-900 rounded-lg shadow-lg flex items-center justify-center">
+              <div id="lever" class="lever w-10 h-24 bg-gradient-to-b from-primary to-accent rounded-md cursor-pointer flex items-center justify-center shadow-md">
+                <i class="fa fa-hand-o-down text-white text-xl"></i>
+              </div>
+            </div>
+            <p class="text-center mt-2 text-gray-300 text-sm">下拉摇摇</p>
+          </div>
+          
+          <!-- 按钮组 -->
+          <div class="flex flex-wrap gap-4 justify-center">
+            <button id="spin-btn" class="bg-primary hover:bg-primary/80 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center gap-2">
+              <i class="fa fa-refresh"></i> 摇出美味
+            </button>
+            <button id="add-dish-btn" class="bg-secondary hover:bg-secondary/80 text-dark font-bold py-3 px-8 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center gap-2">
+              <i class="fa fa-plus"></i> 添加美食
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 菜品列表 -->
+      <div class="bg-dark/60 rounded-2xl p-6 glass-effect border border-gray-700/50 shadow-lg">
+        <h2 class="text-xl md:text-2xl font-bold text-primary mb-4 flex items-center">
+          <i class="fa fa-list-ul mr-2"></i> 美食库 <span class="text-sm font-normal text-gray-400 ml-2">（共${dishes.length}道美味）</span>
+        </h2>
+        <div id="dish-list" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+          <!-- 菜品标签会通过JS动态添加 -->
+        </div>
+      </div>
+    </main>
+    
+    <!-- 页脚 -->
+    <footer class="mt-12 text-center text-gray-500 text-sm">
+      <p>© 2025 多美味摇摇机 | 让每一餐都充满惊喜</p>
+    </footer>
+  </div>
+  
+  <!-- 添加菜品模态框 -->
+  <div id="add-dish-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 hidden">
+    <div class="bg-dark rounded-2xl p-6 md:p-8 w-full max-w-md border border-primary/30 shadow-2xl transform transition-all duration-300 scale-95 opacity-0" id="modal-content">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-xl font-bold text-primary">添加新美食</h3>
+        <button id="close-modal" class="text-gray-400 hover:text-white text-xl cursor-pointer transition-colors">
+          <i class="fa fa-times"></i>
+        </button>
+      </div>
+      <form id="add-dish-form" class="space-y-4">
+        <div>
+          <label for="dish-name" class="block text-gray-300 mb-2">美食名称</label>
+          <input type="text" id="dish-name" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-primary" placeholder="例如：宫保鸡丁" required>
+        </div>
+        <div>
+          <label for="dish-price" class="block text-gray-300 mb-2">美食价格</label>
+          <input type="number" id="dish-price" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-primary" placeholder="例如：15" min="1" required>
+          <p class="text-gray-500 text-xs mt-1">单位：元</p>
+        </div>
+        <div>
+          <label for="dish-category" class="block text-gray-300 mb-2">美食分类</label>
+          <select id="dish-category" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-primary">
+            <option value="main">主菜</option>
+            <option value="side">配菜</option>
+            <option value="snack">小吃</option>
+            <option value="dessert">甜点</option>
+            <option value="drink">饮品</option>
+          </select>
+        </div>
+        <button type="submit" class="w-full bg-primary hover:bg-primary/80 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105">
+          添加美食
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // 完整菜品数据（包含名称和价格）
+    let dishes = [
+      // 第一部分菜品
+      { name: "豆腐焖鱼", price: 20 },
+      { name: "红烧罗非鱼", price: 20 },
+      { name: "香辣小虾", price: 20 },
+      { name: "香辣小鱼仔", price: 20 },
+      { name: "酸菜大肠", price: 20 },
+      { name: "青椒大肠", price: 20 },
+      { name: "青椒猪耳", price: 20 },
+      { name: "土豆牛肉", price: 18 },
+      { name: "酸菜牛肉", price: 18 },
+      { name: "酸笋牛肉", price: 18 },
+      { name: "豆腐牛肉", price: 18 },
+      { name: "苦瓜牛肉", price: 18 },
+      { name: "西芹牛肉", price: 18 },
+      { name: "红萝卜牛肉", price: 18 },
+      { name: "青椒牛肉", price: 15 },
+      { name: "香菇鸡肉", price: 15 },
+      { name: "油爆尖椒", price: 15 },
+      { name: "青椒回锅肉", price: 15 },
+      { name: "干煸四季豆", price: 15 },
+      { name: "日本豆腐煲", price: 15 },
+      { name: "茄瓜煲", price: 15 },
+      { name: "腐竹煲", price: 15 },
+      { name: "香干腊肉", price: 25 },
+      { name: "香菇瘦肉", price: 15 },
+      { name: "香干瘦肉", price: 15 },
+      { name: "四季豆瘦肉", price: 15 },
+      { name: "蒜苗回锅肉", price: 15 },
+      { name: "兰豆回锅肉", price: 15 },
+      { name: "茄子肉沫", price: 15 },
+      { name: "红烧日本豆腐", price: 15 },
+      { name: "香干回锅肉", price: 15 },
+      { name: "茄瓜回锅肉", price: 15 },
+      { name: "木耳鸡肉", price: 15 },
+      { name: "青椒猪肝", price: 15 },
+      { name: "韭菜煎蛋", price: 15 },
+      { name: "葱花前蛋", price: 15 },
+      { name: "火腿鸡蛋", price: 15 },
+      { name: "蒜苗猪杂", price: 15 },
+      { name: "蒜苗鸡杂", price: 15 },
+      { name: "酸笋土鸭", price: 15 },
+      { name: "青椒子鸡", price: 15 },
+      { name: "麻辣豆腐", price: 15 },
+      { name: "木耳猪肝", price: 15 },
+      { name: "酸菜粉肠", price: 15 },
+      { name: "兰豆瘦肉", price: 15 },
+      { name: "油豆付丝炒肉", price: 15 },
+      
+      // 第二部分菜品
+      { name: "酸笋回锅肉", price: 15 },
+      { name: "菜花瘦肉", price: 15 },
+      { name: "青瓜瘦肉", price: 15 },
+      { name: "苦瓜瘦肉", price: 15 },
+      { name: "丝瓜瘦肉", price: 15 },
+      { name: "青椒瘦肉", price: 15 },
+      { name: "腐竹瘦肉", price: 15 },
+      { name: "豆角瘦肉", price: 15 },
+      { name: "西兰花瘦肉", price: 15 },
+      { name: "红萝卜瘦肉", price: 15 },
+      { name: "猪红韭菜", price: 15 },
+      { name: "土豆回锅肉", price: 15 },
+      { name: "西芹回锅肉", price: 15 },
+      { name: "榨菜回锅肉", price: 15 },
+      { name: "木耳回锅肉", price: 15 },
+      { name: "豆腐回锅肉", price: 15 },
+      { name: "豆腐瘦肉", price: 15 },
+      { name: "西芹猪杂", price: 15 },
+      { name: "青椒猪杂", price: 15 },
+      { name: "木耳鸡杂", price: 15 },
+      { name: "土豆瘦肉", price: 15 },
+      { name: "豆芽瘦肉", price: 15 },
+      { name: "莲藕瘦肉", price: 15 },
+      { name: "甜笋瘦肉", price: 15 },
+      { name: "莴笋瘦肉", price: 15 },
+      { name: "玉米瘦肉", price: 15 },
+      { name: "西芹瘦肉", price: 15 },
+      { name: "洋葱瘦肉", price: 15 },
+      { name: "木耳瘦肉", price: 15 },
+      { name: "冬瓜瘦肉", price: 15 },
+      { name: "榨菜瘦肉", price: 15 },
+      { name: "西芹鸡杂", price: 15 },
+      { name: "青椒鸡杂", price: 15 },
+      { name: "豆角鸡杂", price: 15 },
+      { name: "苦瓜鸡蛋", price: 15 },
+      { name: "番茄鸡蛋", price: 15 },
+      { name: "莴笋鸡蛋", price: 15 },
+      { name: "青椒鸡蛋", price: 15 },
+      { name: "醋溜土豆丝", price: 15 }
+    ];
+    
+    // DOM元素
+    const lever = document.getElementById('lever');
+    const spinBtn = document.getElementById('spin-btn');
+    const addDishBtn = document.getElementById('add-dish-btn');
+    const addDishModal = document.getElementById('add-dish-modal');
+    const modalContent = document.getElementById('modal-content');
+    const closeModal = document.getElementById('close-modal');
+    const addDishForm = document.getElementById('add-dish-form');
+    const dishNameInput = document.getElementById('dish-name');
+    const dishPriceInput = document.getElementById('dish-price');
+    const dishList = document.getElementById('dish-list');
+    const result = document.getElementById('result');
+    const winningDish = document.getElementById('winning-dish');
+    const winningPrice = document.getElementById('winning-price');
+    const particles = document.getElementById('particles');
+    
+    // 摇摇机滚筒元素
+    const reels = [
+      { element: document.getElementById('reel1-inner'), isSpinning: false },
+      { element: document.getElementById('reel2-inner'), isSpinning: false },
+      { element: document.getElementById('reel3-inner'), isSpinning: false }
+    ];
+    
+    // 初始化菜品列表
+    function initDishList() {
+      dishList.innerHTML = '';
+      dishes.forEach((dish, index) => {
+        const dishTag = document.createElement('div');
+        dishTag.className = 'bg-gray-800/70 hover:bg-gray-700/70 rounded-lg p-2 text-center cursor-pointer transition-all duration-300 transform hover:scale-105 flex flex-col items-center justify-center';
+        dishTag.innerHTML = `
+          <span class="text-sm md:text-base truncate">${dish.name}</span>
+          <span class="text-xs text-secondary mt-1">${dish.price}元</span>
+          <button class="mt-1 text-gray-400 hover:text-red-500 transition-colors self-end" onclick="removeDish(${index}, event)">
+            <i class="fa fa-times text-xs"></i>
+          </button>
+        `;
+        dishList.appendChild(dishTag);
+      });
+      
+      // 更新美食数量显示
+      const dishCountElement = document.querySelector('h2.text-primary span');
+      if (dishCountElement) {
+        dishCountElement.textContent = `（共${dishes.length}道美味）`;
+      }
+    }
+    
+    // 初始化摇摇机滚筒
+    function initReels() {
+      reels.forEach(reel => {
+        reel.element.innerHTML = '';
+        // 为每个滚筒添加双倍菜品，实现无缝滚动效果
+        [...dishes, ...dishes].forEach(dish => {
+          const item = document.createElement('div');
+          item.className = 'slot-item text-[clamp(0.9rem,2vw,1.1rem)]';
+          
+          // 根据价格区间添加不同颜色
+          let priceColor = 'text-green-400'; // 15元
+          if (dish.price === 18) priceColor = 'text-secondary';
+          if (dish.price === 20) priceColor = 'text-accent';
+          if (dish.price === 25) priceColor = 'text-purple-500';
+          
+          item.classList.add(priceColor);
+          
+          item.innerHTML = `
+            <span class="truncate">${dish.name}</span>
+            <span class="dish-price">${dish.price}元</span>
+          `;
+          reel.element.appendChild(item);
+        });
+      });
+    }
+    
+    // 摇动摇摇机
+    function spinReels() {
+      // 重置结果显示
+      result.classList.add('hidden');
+      result.classList.remove('win-effect');
+      
+      // 禁用按钮防止重复点击
+      lever.style.pointerEvents = 'none';
+      spinBtn.disabled = true;
+      spinBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      
+      // 拉杆动画
+      lever.classList.add('lever-active');
+      
+      // 随机选择中奖美食
+      const winningIndex = Math.floor(Math.random() * dishes.length);
+      const winningDishData = dishes[winningIndex];
+      
+      // 每个滚筒依次开始旋转
+      reels.forEach((reel, index) => {
+        reel.isSpinning = true;
+        
+        // 计算目标位置（确保中奖美食在中间）
+        const itemHeight = 120;
+        const targetPosition = (winningIndex * itemHeight) + (dishes.length * itemHeight);
+        
+        // 设置延迟，让滚筒依次停止
+        setTimeout(() => {
+          reel.element.style.transition = 'transform 3s cubic-bezier(0.2, 0.8, 0.2, 1)';
+          reel.element.style.transform = `translateY(-${targetPosition}px)`;
+          
+          // 旋转结束
+          setTimeout(() => {
+            reel.isSpinning = false;
+            
+            // 所有滚筒都停止后
+            if (!reels.some(r => r.isSpinning)) {
+              lever.classList.remove('lever-active');
+              lever.style.pointerEvents = 'auto';
+              spinBtn.disabled = false;
+              spinBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+              
+              // 显示中奖结果
+              winningDish.textContent = winningDishData.name;
+              winningPrice.textContent = `价格：${winningDishData.price}元`;
+              result.classList.remove('hidden');
+              
+              // 添加中奖动画
+              setTimeout(() => {
+                result.classList.add('win-effect');
+                createConfetti();
+              }, 300);
+            }
+          }, 3000);
+        }, index * 500);
+      });
+    }
+    
+    // 添加美食
+    function addDish(name, price) {
+      const dishExists = dishes.some(dish => dish.name === name);
+      
+      if (name && price && !dishExists) {
+        dishes.push({ name, price: parseInt(price) });
+        initDishList();
+        initReels();
+        
+        // 显示添加成功提示
+        const notification = document.createElement('div');
+        notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 transition-all duration-500 transform translate-x-full';
+        notification.textContent = `成功添加：${name}（${price}元）`;
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+          notification.classList.remove('translate-x-full');
+        }, 100);
+        
+        setTimeout(() => {
+          notification.classList.add('translate-x-full');
+          setTimeout(() => {
+            document.body.removeChild(notification);
+          }, 500);
+        }, 3000);
+      } else if (dishExists) {
+        alert('该美食已存在！');
+      }
+    }
+    
+    // 删除美食
+    function removeDish(index, event) {
+      event.stopPropagation();
+      if (dishes.length > 3) { // 确保至少保留3个美食
+        const removedDish = dishes.splice(index, 1)[0];
+        initDishList();
+        initReels();
+        
+        // 显示删除提示
+        const notification = document.createElement('div');
+        notification.className = 'fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 transition-all duration-500 transform translate-x-full';
+        notification.textContent = `已删除：${removedDish.name}（${removedDish.price}元）`;
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+          notification.classList.remove('translate-x-full');
+        }, 100);
+        
+        setTimeout(() => {
+          notification.classList.add('translate-x-full');
+          setTimeout(() => {
+            document.body.removeChild(notification);
+          }, 500);
+        }, 3000);
+      } else {
+        alert('至少保留3道美食才能继续使用！');
+      }
+    }
+    
+    // 创建粒子背景
+    function createParticles() {
+      for (let i = 0; i < 50; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+        
+        // 随机大小、位置和动画延迟
+        const size = Math.random() * 10 + 2;
+        const x = Math.random() * 100;
+        const y = Math.random() * 100;
+        const delay = Math.random() * 10;
+        const duration = Math.random() * 10 + 5;
+        
+        particle.style.width = `${size}px`;
+        particle.style.height = `${size}px`;
+        particle.style.left = `${x}%`;
+        particle.style.top = `${y}%`;
+        particle.style.animationDelay = `${delay}s`;
+        particle.style.animationDuration = `${duration}s`;
+        
+        particles.appendChild(particle);
+      }
+    }
+    
+    // 创建庆祝彩屑
+    function createConfetti() {
+      const colors = ['#FF7D00', '#FFB800', '#FF4500', '#FFFFFF', '#FF6B6B', '#4ECDC4', '#A855F7'];
+      
+      for (let i = 0; i < 100; i++) {
+        const confetti = document.createElement('div');
+        confetti.className = 'fixed z-40';
+        
+        // 随机样式
+        const size = Math.random() * 10 + 5;
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const x = Math.random() * 100;
+        const rotation = Math.random() * 360;
+        const duration = Math.random() * 3 + 2;
+        
+        confetti.style.width = `${size}px`;
+        confetti.style.height = `${size / 2}px`;
+        confetti.style.backgroundColor = color;
+        confetti.style.left = `${x}%`;
+        confetti.style.top = '-20px';
+        confetti.style.transform = `rotate(${rotation}deg)`;
+        confetti.style.opacity = '0.8';
+        confetti.style.borderRadius = '3px';
+        confetti.style.animation = `fall ${duration}s linear forwards`;
+        
+        document.body.appendChild(confetti);
+        
+        // 动画结束后移除
+        setTimeout(() => {
+          document.body.removeChild(confetti);
+        }, duration * 1000);
+      }
+      
+      // 添加下落动画
+      const style = document.createElement('style');
+      style.textContent = `
+        @keyframes fall {
+          0% { transform: translateY(0) rotate(0deg); opacity: 0.8; }
+          100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+      `;
+      document.head.appendChild(style);
+      
+      // 移除样式
+      setTimeout(() => {
+        document.head.removeChild(style);
+      }, 5000);
+    }
+    
+    // 事件监听
+    function initEventListeners() {
+      // 拉杆点击
+      lever.addEventListener('click', spinReels);
+      
+      // 摇动按钮
+      spinBtn.addEventListener('click', spinReels);
+      
+      // 添加美食按钮
+      addDishBtn.addEventListener('click', () => {
+        addDishModal.classList.remove('hidden');
+        setTimeout(() => {
+          modalContent.classList.remove('scale-95', 'opacity-0');
+          modalContent.classList.add('scale-100', 'opacity-100');
+        }, 10);
+        dishNameInput.focus();
+      });
+      
+      // 关闭模态框
+      closeModal.addEventListener('click', () => {
+        modalContent.classList.remove('scale-100', 'opacity-100');
+        modalContent.classList.add('scale-95', 'opacity-0');
+        setTimeout(() => {
+          addDishModal.classList.add('hidden');
+        }, 300);
+      });
+      
+      // 点击模态框背景关闭
+      addDishModal.addEventListener('click', (e) => {
+        if (e.target === addDishModal) {
+          closeModal.click();
+        }
+      });
+      
+      // 表单提交
+      addDishForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const dishName = dishNameInput.value.trim();
+        const dishPrice = dishPriceInput.value.trim();
+        
+        if (dishName && dishPrice) {
+          addDish(dishName, dishPrice);
+          dishNameInput.value = '';
+          dishPriceInput.value = '';
+          closeModal.click();
+        }
+      });
+      
+      // 键盘事件
+      document.addEventListener('keydown', (e) => {
+        // 按空格键摇动
+        if (e.code === 'Space' && !reels.some(r => r.isSpinning)) {
+          spinReels();
+        }
+        
+        // 按ESC关闭模态框
+        if (e.code === 'Escape' && !addDishModal.classList.contains('hidden')) {
+          closeModal.click();
+        }
+      });
+    }
+    
+    // 初始化
+    function init() {
+      createParticles();
+      initDishList();
+      initReels();
+      initEventListeners();
+    }
+    
+    // 页面加载完成后初始化
+    window.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
